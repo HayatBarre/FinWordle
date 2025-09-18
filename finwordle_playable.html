@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinWordle — Finance & Investing Wordle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#0e0b14;           /* near-black */
+      --panel:#151228;        /* deep indigo */
+      --panel-2:#1c1738;      /* lighter indigo */
+      --text:#f6f2ff;         /* off-white */
+      --muted:#b9a8ff;        /* muted purple */
+      --accent:#7c3aed;       /* main purple */
+      --accent-2:#a78bfa;     /* soft purple */
+      --correct:#22c55e;      /* green */
+      --present:#eab308;      /* yellow */
+      --absent:#3b3752;       /* dim */
+      --key:#2a2446;          /* key base */
+      --key-text:#ebe7ff;
+      --shadow: 0 10px 30px rgba(0,0,0,.35), 0 6px 16px rgba(124,58,237,.15);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:radial-gradient(1200px 800px at 20% -10%, rgba(124,58,237,.25), transparent 60%),
+      radial-gradient(1000px 600px at 120% 10%, rgba(167,139,250,.18), transparent 60%), var(--bg);
+      color:var(--text); font-family:"Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{
+      width:min(100%, 920px); max-width:920px; display:grid; grid-template-columns: 360px 1fr; gap:24px;
+    }
+    @media (max-width: 920px){ .app{ grid-template-columns: 1fr; } }
+
+    .panel{
+      background:linear-gradient(180deg, var(--panel), var(--panel-2));
+      border:1px solid rgba(167,139,250,.18);
+      box-shadow:var(--shadow); border-radius:var(--radius);
+    }
+    header{
+      display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid rgba(167,139,250,.15);
+    }
+    .brand{display:flex; gap:10px; align-items:center}
+    .logo{
+      width:36px; height:36px; border-radius:10px; background: conic-gradient(from 180deg at 50% 50%, var(--accent), #6d28d9, #5b21b6, var(--accent));
+      box-shadow: inset 0 0 20px rgba(255,255,255,.08), 0 8px 20px rgba(124,58,237,.35);
+    }
+    h1{font-size:20px; letter-spacing:.6px; margin:0; font-weight:800}
+    .actions{display:flex; gap:10px}
+    .btn{appearance:none; border:none; background:var(--key); color:var(--key-text); padding:10px 12px; border-radius:12px; font-weight:600; cursor:pointer; transition:transform .06s ease, background .2s ease;}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{background:linear-gradient(180deg, var(--accent), #6d28d9); color:white}
+
+    .left{padding:18px}
+    .card{padding:16px; border-radius:14px; background:rgba(124,58,237,.08); border:1px solid rgba(124,58,237,.22)}
+    .card h3{margin:0 0 8px 0; font-size:14px; text-transform:uppercase; letter-spacing:.12em; color:var(--accent-2)}
+    .stats{display:grid; grid-template-columns: repeat(3,1fr); gap:10px; margin-top:8px}
+    .stat{background:rgba(255,255,255,.04); padding:12px; border-radius:12px; text-align:center; border:1px solid rgba(255,255,255,.06)}
+    .stat .n{font-size:22px; font-weight:800}
+    .stat .l{font-size:12px; color:var(--muted)}
+    .note{font-size:13px; color:var(--muted); line-height:1.45}
+
+    .game{padding:0}
+    .board{display:grid; grid-template-rows: repeat(6, 1fr); gap:10px; padding:18px}
+    .row{display:grid; grid-template-columns: repeat(5, 1fr); gap:10px}
+    .tile{height:62px; border-radius:12px; border:1px solid rgba(167,139,250,.22); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:28px; letter-spacing:1px; text-transform:uppercase; background:rgba(255,255,255,.03)}
+    .tile.pop{animation:pop .14s ease}
+    .tile.flip{animation:flip .6s ease forwards}
+    .tile[data-state="correct"]{background:linear-gradient(180deg, #16a34a, #22c55e); color:white; border-color:rgba(0,0,0,.1)}
+    .tile[data-state="present"]{background:linear-gradient(180deg, #d97706, #eab308); color:#1a1200; border-color:rgba(0,0,0,.1)}
+    .tile[data-state="absent"]{background:linear-gradient(180deg, #26223f, #3b3752); color:#cfc8ff; border-color:rgba(0,0,0,.1)}
+    @keyframes pop{0%{transform:scale(.92)}100%{transform:scale(1)}}
+    @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+
+    .kb{padding:0 18px 18px; display:grid; gap:8px}
+    .kb-row{display:grid; grid-template-columns: repeat(10, 1fr); gap:8px}
+    .kb-row:nth-child(2){grid-template-columns: .5fr repeat(9, 1fr) .5fr}
+    .kb-row:nth-child(3){grid-template-columns: 1.4fr repeat(7, 1fr) 1.4fr}
+    .key{user-select:none; background:var(--key); color:var(--key-text); border:none; border-radius:10px; padding:12px 8px; font-weight:700; letter-spacing:.5px; box-shadow: inset 0 -2px 0 rgba(255,255,255,.04), 0 1px 0 rgba(0,0,0,.35); cursor:pointer}
+    .key[data-state="correct"]{background:var(--correct); color:#021406}
+    .key[data-state="present"]{background:var(--present); color:#1a1200}
+    .key[data-state="absent"]{background:var(--absent); color:#bfb9e9}
+
+    .toast{position:fixed; inset:auto 0 24px 0; display:flex; justify-content:center; pointer-events:none}
+    .toast .bubble{pointer-events:auto; background:rgba(21,18,40,.95); border:1px solid rgba(167,139,250,.25); color:var(--text); padding:14px 16px; border-radius:14px; box-shadow:var(--shadow)}
+
+    .topbar{display:flex; align-items:center; gap:10px}
+    .topbar .tag{font-size:12px; color:var(--muted); background:rgba(124,58,237,.12); border:1px solid rgba(124,58,237,.25); padding:6px 10px; border-radius:999px}
+
+    dialog{border:none; border-radius:16px; background:linear-gradient(180deg, #160f2a, #1c1738); color:var(--text); width:min(92vw, 560px); box-shadow:var(--shadow);}
+    dialog::backdrop{background:rgba(0,0,0,.6)}
+    .dlg{padding:16px 18px 18px}
+    .dlg h2{margin:0 0 6px 0}
+    .dlg p{color:#dcd2ff}
+    .dlg .def{background:rgba(124,58,237,.12); border:1px solid rgba(124,58,237,.25); padding:12px 14px; border-radius:12px}
+    .dlg .row{display:flex; gap:10px; flex-wrap:wrap}
+    .dlg .row .btn{flex:1}
+
+    .footer{padding:14px 18px; display:flex; align-items:center; justify-content:space-between; border-top:1px solid rgba(167,139,250,.15); color:var(--muted); font-size:12px}
+    .link{color:var(--accent-2); text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="panel left" aria-label="Sidebar">
+      <header>
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <h1>FinWordle</h1>
+        </div>
+        <div class="actions">
+          <button class="btn" id="helpBtn" aria-label="How to play">How to Play</button>
+          <button class="btn primary" id="hintBtn" aria-label="Get a hint">Hint</button>
+        </div>
+      </header>
+
+      <div class="card" style="margin-top:14px">
+        <div class="topbar">
+          <span class="tag">Daily Challenge</span>
+          <span class="tag" id="dateTag"></span>
+        </div>
+        <h3>Goal</h3>
+        <p class="note">Guess the finance or investment term in 6 tries. Each guess must be a valid 5‑letter word. Tile colours show how close your guess is.</p>
+        <div class="stats" id="stats">
+          <div class="stat"><div class="n" id="stPlayed">0</div><div class="l">Played</div></div>
+          <div class="stat"><div class="n" id="stWin">0%</div><div class="l">Win Rate</div></div>
+          <div class="stat"><div class="n" id="stStreak">0</div><div class="l">Streak</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>Finance Glossary</h3>
+        <p class="note" id="glossaryNote">Tap <b>Hint</b> for a short definition of today’s word. Explore more by clicking the result share link once you win or lose.</p>
+      </div>
+    </section>
+
+    <section class="panel game" aria-label="Game">
+      <header>
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <h1>Guess the Term</h1>
+        </div>
+        <div class="actions">
+          <button class="btn" id="resetBtn" aria-label="Reset game">New Term</button>
+          <button class="btn" id="shareBtn" aria-label="Share result">Share</button>
+        </div>
+      </header>
+
+      <div class="board" id="board" role="application" aria-label="Word board"></div>
+      <div class="kb" id="keyboard" aria-label="On-screen keyboard"></div>
+
+      <div class="footer">
+        <span>Made with 💜 for planners & investors</span>
+        <a class="link" href="#" id="aboutLink">About</a>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <dialog id="helpDialog">
+    <div class="dlg">
+      <h2>How to Play</h2>
+      <p>Guess the 5‑letter financial term in <b>6 tries</b>. After each guess, tiles turn:</p>
+      <ul>
+        <li><b style="color:var(--correct)">Green</b> = right letter in the right place.</li>
+        <li><b style="color:var(--present)">Yellow</b> = letter is in the word, wrong place.</li>
+        <li><b style="color:var(--absent)">Grey</b> = letter not in the word.</li>
+      </ul>
+      <div class="def" style="margin-top:10px; font-size:14px">Tip: All words are from finance & investing — think <i>ASSET, BONDS, YIELD, TRUST, GILTS</i>…</div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="closeHelp">Got it</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="hintDialog">
+    <div class="dlg">
+      <h2>Today’s Hint</h2>
+      <p id="hintText">…</p>
+      <div class="row">
+        <button class="btn" id="closeHint">Close</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="aboutDialog">
+    <div class="dlg">
+      <h2>About FinWordle</h2>
+      <p>A sleek, purple‑themed Wordle‑style game using financial planning and investing terms. Built for quick daily play and learning.</p>
+      <div class="row"><button class="btn" id="closeAbout">Close</button></div>
+    </div>
+  </dialog>
+
+  <script>
+    // ===== Word List (5-letter finance/investing terms) =====
+    const WORDS = [
+      'ASSET','BONDS','STOCK','YIELD','ALPHA','RISKS','INDEX','TAXES','TRUST','RATES','VALUE','COSTS','LOANS','FUNDS','GILTS','PIVOT','DELTA','FLOAT','MONEY','CAPEX','CARRY','MERGE','SPEND','CREDIT','GROSS','NETTS','ETFSA'
+    ].filter(w=>w.length===5);
+
+    // Optional expanded valid guess list (include more real English guesses if desired)
+    const VALID_EXTRA = ['CASHY','FEEED','HEDGE','NOMAD','QUOTE','SIGMA','BASIS','SWAPS','BULLS','BEARS','BETAQ','WIDTH','COCOS','TAPER','POUND','EUROS','YENNY','VALUE'];
+
+    // Simple definitions for hints
+    const DEFINITIONS = {
+      'ASSET':'Something with economic value that you own.',
+      'BONDS':'Fixed‑income securities that pay coupons and return principal at maturity.',
+      'STOCK':'An equity share representing ownership in a company.',
+      'YIELD':'Income return on an investment, shown as a percentage.',
+      'ALPHA':'Excess return above a benchmark attributable to skill.',
+      'RISKS':'The possibility that outcomes differ from what you expect.',
+      'INDEX':'A basket used to track the performance of a market segment.',
+      'TAXES':'Compulsory charges to fund public spending; key to net returns.',
+      'TRUST':'A legal structure where trustees hold assets for beneficiaries.',
+      'RATES':'Interest levels set by markets/central banks affecting returns.',
+      'VALUE':'A style focusing on underpriced companies vs. fundamentals.',
+      'COSTS':'Fees, charges, and friction that reduce returns.',
+      'LOANS':'Borrowed money to be repaid with interest.',
+      'FUNDS':'Pooled investment vehicles run by managers.',
+      'GILTS':'UK government bonds (low default risk).',
+      'PIVOT':'A central bank shift in policy stance on rates.',
+      'DELTA':'Sensitivity of an option’s price to the underlying.',
+      'FLOAT':'To issue shares to the public / free‑trading shares.',
+      'MONEY':'Medium of exchange; unit of account; store of value.',
+      'CAPEX':'Capital expenditure on long‑term assets.',
+      'CARRY':'Return from holding an asset (e.g., yield minus funding).',
+      'MERGE':'When two companies combine their businesses.',
+      'SPEND':'Outlay of money; opposite of saving/investing.',
+      'CREDIT':'Borrower’s ability to obtain funds; debt markets.',
+      'GROSS':'Before fees/taxes; the opposite of net.',
+      'NETTS':'After fees/taxes (playful plural for NETT).',
+      'ETFSA':'Tax‑advantaged wrappers & exchange‑traded funds (playful).'
+    };
+
+    // ===== Utility helpers =====
+    const q = sel => document.querySelector(sel);
+    const el = (tag, cls) => { const e = document.createElement(tag); if(cls) e.className=cls; return e; };
+    const todayKey = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${(d.getMonth()+1)}-${d.getDate()}`;
+    };
+
+    function rngFromSeed(seed){
+      // xmur3 + mulberry32 combo
+      function xmur3(str){ for(var i=0,h=1779033703^str.length; i<str.length; i++){ h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h<<13 | h>>>19; } return function(){ h = Math.imul(h ^ (h>>>16), 2246822507); h = Math.imul(h ^ (h>>>13), 3266489909); return (h ^= h>>>16) >>> 0; } }
+      function mulberry32(a){ return function(){ var t = a += 0x6D2B79F5; t = Math.imul(t ^ t>>>15, t | 1); t ^= t + Math.imul(t ^ t>>>7, t | 61); return ((t ^ t>>>14) >>> 0) / 4294967296; } }
+      return mulberry32(xmur3(seed)());
+    }
+
+    // ===== Game State =====
+    const STATE = {
+      solution: 'ASSET',
+      row: 0,
+      col: 0,
+      grid: Array.from({length:6},()=>Array(5).fill('')),
+      done: false,
+      hardMode: false
+    };
+
+    function pickDaily(){
+      const rng = rngFromSeed(todayKey());
+      const idx = Math.floor(rng()*WORDS.length);
+      return WORDS[idx];
+    }
+
+    function saveStats(win){
+      const k = 'finwordle.stats';
+      const s = JSON.parse(localStorage.getItem(k) || '{"played":0,"wins":0,"streak":0,"last":""}');
+      s.played += 1;
+      if(win){ s.wins += 1; s.streak += (s.last === todayKey()) ? 0 : 1; } else { s.streak = 0; }
+      s.last = todayKey();
+      localStorage.setItem(k, JSON.stringify(s));
+      renderStats();
+    }
+
+    function renderStats(){
+      const s = JSON.parse(localStorage.getItem('finwordle.stats') || '{"played":0,"wins":0,"streak":0}');
+      q('#stPlayed').textContent = s.played;
+      q('#stWin').textContent = s.played ? Math.round((s.wins||0)/s.played*100)+'%' : '0%';
+      q('#stStreak').textContent = s.streak||0;
+    }
+
+    // ===== Build Board =====
+    const board = q('#board');
+    function buildBoard(){
+      board.innerHTML = '';
+      for(let r=0;r<6;r++){
+        const row = el('div','row');
+        for(let c=0;c<5;c++){
+          const t = el('div','tile');
+          t.setAttribute('data-row', r);
+          t.setAttribute('data-col', c);
+          row.appendChild(t);
+        }
+        board.appendChild(row);
+      }
+    }
+
+    // ===== Keyboard =====
+    const KEYS_ROW1 = 'QWERTYUIOP'.split('');
+    const KEYS_ROW2 = 'ASDFGHJKL'.split('');
+    const KEYS_ROW3 = ['ENTER',...'ZXCVBNM','⌫'];
+    const keyStates = {}; // letter => state
+
+    function buildKeyboard(){
+      const kb = q('#keyboard'); kb.innerHTML='';
+      const r1 = el('div','kb-row');
+      KEYS_ROW1.forEach(k=>r1.appendChild(makeKey(k)));
+      const r2 = el('div','kb-row');
+      r2.appendChild(el('div'));
+      KEYS_ROW2.forEach(k=>r2.appendChild(makeKey(k)));
+      r2.appendChild(el('div'));
+      const r3 = el('div','kb-row');
+      KEYS_ROW3.forEach(k=>r3.appendChild(makeKey(k)));
+      kb.append(r1,r2,r3);
+    }
+
+    function makeKey(label){
+      const b = document.createElement('button');
+      b.className = 'key';
+      b.textContent = label;
+      b.dataset.key = label;
+      b.addEventListener('click', ()=>handleKey(label));
+      return b;
+    }
+
+    function updateKeyStates(){
+      for(const [k,v] of Object.entries(keyStates)){
+        const btn = document.querySelector(`.key[data-key="${k}"]`);
+        if(btn) btn.setAttribute('data-state', v);
+      }
+    }
+
+    // ===== Toast =====
+    function toast(msg, ms=1600){
+      const t = q('#toast');
+      t.innerHTML = `<div class="bubble">${msg}</div>`;
+      setTimeout(()=>{ t.innerHTML=''; }, ms);
+    }
+
+    // ===== Game Logic =====
+    function typeLetter(ch){
+      if(STATE.done) return;
+      if(STATE.col>=5) return;
+      STATE.grid[STATE.row][STATE.col]=ch;
+      const tile = tileAt(STATE.row, STATE.col);
+      tile.textContent = ch;
+      tile.classList.add('pop'); setTimeout(()=>tile.classList.remove('pop'), 150);
+      STATE.col++;
+    }
+
+    function backspace(){
+      if(STATE.done) return;
+      if(STATE.col<=0) return;
+      STATE.col--;
+      STATE.grid[STATE.row][STATE.col]='';
+      const tile = tileAt(STATE.row, STATE.col);
+      tile.textContent='';
+      tile.removeAttribute('data-state');
+    }
+
+    function submit(){
+      if(STATE.done) return;
+      if(STATE.col<5){ toast('Not enough letters'); return; }
+      const guess = STATE.grid[STATE.row].join('');
+      if(!isValidGuess(guess)) { toast('Not in FinWordle list'); return; }
+      revealRow(guess);
+    }
+
+    function isValidGuess(word){
+      const up = word.toUpperCase();
+      return WORDS.includes(up) || VALID_EXTRA.includes(up);
+    }
+
+    function tileAt(r,c){
+      return document.querySelector(`.tile[data-row="${r}"][data-col="${c}"]`);
+    }
+
+    function revealRow(guess){
+      const sol = STATE.solution;
+      const res = Array(5).fill('absent');
+      const solCounts = {};
+      for(let i=0;i<5;i++){ const ch=sol[i]; solCounts[ch]=(solCounts[ch]||0)+1; }
+
+      // First pass: corrects
+      for(let i=0;i<5;i++){
+        if(guess[i]===sol[i]){ res[i]='correct'; solCounts[guess[i]]--; }
+      }
+      // Second pass: presents
+      for(let i=0;i<5;i++){
+        if(res[i]==='correct') continue;
+        const ch = guess[i];
+        if(sol.includes(ch) && solCounts[ch]>0){ res[i]='present'; solCounts[ch]--; }
+      }
+
+      // Animate
+      for(let i=0;i<5;i++){
+        const tile = tileAt(STATE.row, i);
+        setTimeout(()=>{
+          tile.classList.add('flip');
+          tile.setAttribute('data-state', res[i]);
+          // keyboard state priority: correct > present > absent
+          const k = guess[i];
+          const prev = keyStates[k];
+          if(prev !== 'correct'){
+            keyStates[k] = prev==='present' && res[i]==='absent' ? 'present' : res[i];
+          }
+          updateKeyStates();
+        }, i*220);
+      }
+
+      setTimeout(()=>{
+        if(guess===sol){
+          STATE.done = true; saveStats(true);
+          toast(`Correct! ${sol} — ${DEFINITIONS[sol]||''}`, 2400);
+        } else if(STATE.row===5){
+          STATE.done = true; saveStats(false);
+          toast(`Out of tries. It was ${sol}.`, 2400);
+        } else {
+          STATE.row++; STATE.col=0;
+        }
+      }, 5*220 + 50);
+    }
+
+    function handleKey(label){
+      if(label==='ENTER') submit();
+      else if(label==='⌫') backspace();
+      else if(/^[A-Z]$/.test(label)) typeLetter(label);
+    }
+
+    document.addEventListener('keydown', (e)=>{
+      const k = e.key.toUpperCase();
+      if(k==='ENTER') submit();
+      else if(k==='BACKSPACE') backspace();
+      else if(/^[A-Z]$/.test(k) && k.length===1) typeLetter(k);
+    });
+
+    // ===== Hint dialog =====
+    const helpDialog = q('#helpDialog');
+    const hintDialog = q('#hintDialog');
+    const aboutDialog = q('#aboutDialog');
+
+    q('#helpBtn').onclick = ()=>helpDialog.showModal();
+    q('#closeHelp').onclick = ()=>helpDialog.close();
+
+    q('#hintBtn').onclick = ()=>{
+      q('#hintText').textContent = DEFINITIONS[STATE.solution] || 'No hint available.';
+      hintDialog.showModal();
+    };
+    q('#closeHint').onclick = ()=>hintDialog.close();
+
+    q('#aboutLink').onclick = (e)=>{ e.preventDefault(); aboutDialog.showModal(); }
+    q('#closeAbout').onclick = ()=>aboutDialog.close();
+
+    // ===== Share =====
+    q('#shareBtn').onclick = ()=>{
+      const rows = [];
+      for(let r=0;r<=STATE.row; r++){
+        const tiles = []; const guess = STATE.grid[r];
+        for(let c=0;c<5;c++){
+          const t = tileAt(r,c);
+          const s = t.getAttribute('data-state');
+          if(!s) continue;
+          tiles.push(s==='correct'?'🟩':s==='present'?'🟨':'⬜');
+        }
+        if(tiles.length) rows.push(tiles.join(''));
+      }
+      const date = new Date();
+      const header = `FinWordle ${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+      const text = `${header} ${STATE.done?STATE.row+1:'/'} /6\n${rows.join('\n')}\n${location.href}`;
+      navigator.clipboard.writeText(text).then(()=>toast('Result copied to clipboard')).catch(()=>toast('Copy failed'));
+    };
+
+    // ===== Reset / New term =====
+    q('#resetBtn').onclick = ()=>{
+      STATE.solution = pickDaily();
+      STATE.row=0; STATE.col=0; STATE.grid = Array.from({length:6},()=>Array(5).fill(''));
+      STATE.done=false; for(const k in keyStates) delete keyStates[k];
+      buildBoard(); buildKeyboard(); updateKeyStates();
+      updateDateTag();
+    };
+
+    function updateDateTag(){
+      const d = new Date();
+      q('#dateTag').textContent = d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+    }
+
+    // ===== Init =====
+    function init(){
+      STATE.solution = pickDaily();
+      updateDateTag();
+      buildBoard(); buildKeyboard(); renderStats();
+    }
+    init();
+
+  </script>
+</body>
+</html>
